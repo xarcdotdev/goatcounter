@@ -30,6 +30,7 @@ import (
 	"zgo.at/zhttp/header"
 	"zgo.at/zstd/zint"
 	"zgo.at/zstd/zruntime"
+	"zgo.at/zstd/zstrconv"
 	"zgo.at/zstd/ztime"
 	"zgo.at/zvalidate"
 )
@@ -73,6 +74,8 @@ func (h settings) mount(r chi.Router, ratelimits Ratelimits) {
 		set.Get("/settings/purge", zhttp.Wrap(h.purge))
 		set.Post("/settings/purge", zhttp.Wrap(h.purgeDo))
 		set.Post("/settings/merge", zhttp.Wrap(h.merge))
+		set.Get("/settings/batchpurge", zhttp.Wrap(h.batchpurge))
+		set.Post("/settings/batchpurge", zhttp.Wrap(h.batchpurge))
 
 		set.Get("/settings/export", zhttp.Wrap(func(w http.ResponseWriter, r *http.Request) error {
 			return h.export(nil)(w, r)
@@ -80,9 +83,9 @@ func (h settings) mount(r chi.Router, ratelimits Ratelimits) {
 		set.Get("/settings/export/{id}", zhttp.Wrap(h.exportDownload))
 		set.Post("/settings/export/import", zhttp.Wrap(h.exportImport))
 		set.Post("/settings/export/import-ga", zhttp.Wrap(h.exportImportGA))
-		set.With(Ratelimit(false, func(*http.Request) (limiter.Store, string) {
+		set.With(Ratelimit(false, func(*http.Request) ([]limiter.Store, string) {
 			// TODO(i18n): this should be translated.
-			return ratelimits.Export, "you can request only one export per hour"
+			return []limiter.Store{ratelimits.Export}, "you can request only one export per hour"
 		})).Post("/settings/export", zhttp.Wrap(h.exportStart))
 	}
 
@@ -463,6 +466,172 @@ func (h settings) sitesCopySettings(w http.ResponseWriter, r *http.Request) erro
 	return zhttp.SeeOther(w, "/settings/sites")
 }
 
+func (h settings) batchpurge(w http.ResponseWriter, r *http.Request) error {
+	type renameKey struct {
+		ID   goatcounter.PathID
+		Path string
+	}
+	var (
+		deletes goatcounter.HitLists
+		renames = make(map[renameKey]goatcounter.HitLists)
+		dsts    = make(map[string]goatcounter.PathID)
+		errs    = errors.NewGroup(50)
+		args    struct {
+			Input  string                          `json:"input"`
+			Delete []goatcounter.PathID            `json:"delete"`
+			Rename map[string][]goatcounter.PathID `json:"rename"`
+			Action string                          `json:"action"`
+		}
+	)
+	if r.Method == "POST" {
+		if _, err := zhttp.Decode(r, &args); err != nil {
+			return err
+		}
+
+		if args.Action == "run" {
+			ctx := context.WithoutCancel(r.Context())
+			bgrun.RunFunction(fmt.Sprintf("purge:%d", Site(ctx).ID), func() {
+				err := zdb.TX(ctx, func(ctx context.Context) error {
+					if len(args.Delete) > 0 {
+						var list goatcounter.Hits
+						err := list.Purge(ctx, args.Delete)
+						if err != nil {
+							return err
+						}
+					}
+					if len(args.Rename) > 0 {
+						for dstPath, mergeIDs := range args.Rename {
+							id, dstPath, _ := strings.Cut(dstPath, "-")
+
+							var (
+								dst goatcounter.Path
+								err error
+							)
+							if id == "0" { // Create new Path
+								// It's possible that a previous line created this, so GetOrInsert() is appropriate.
+								dst.Path = dstPath
+								err = dst.GetOrInsert(ctx)
+							} else { // Merge to existing ID
+								pID, err2 := zstrconv.ParseInt[goatcounter.PathID](id, 10)
+								if err2 != nil {
+									return err2
+								}
+								err = dst.ByID(ctx, pID)
+							}
+							if err != nil {
+								return err
+							}
+
+							mergeIDs = slices.DeleteFunc(mergeIDs, func(p goatcounter.PathID) bool { return p == dst.ID })
+							if len(mergeIDs) == 0 {
+								return guru.New(400, T(ctx, "error/merge-self|Cannot merge a path with itself"))
+							}
+							merge := make(goatcounter.Paths, len(mergeIDs))
+							for i := range mergeIDs {
+								err := merge[i].ByID(ctx, mergeIDs[i])
+								if err != nil {
+									return err
+								}
+							}
+
+							err = dst.Merge(ctx, merge)
+							if err != nil {
+								return err
+							}
+						}
+					}
+					return nil
+				})
+				if err != nil {
+					log.Error(ctx, err)
+				}
+			})
+
+			zhttp.Flash(w, r, T(r.Context(),
+				"notify/started-background-process|Started in the background; may take about 10-20 seconds to fully process."))
+			return zhttp.SeeOther(w, "/settings/batchpurge")
+		}
+
+		var (
+			i    = 0
+			find = func(path string) (goatcounter.HitLists, error) {
+				matchCase := true
+				if strings.HasPrefix(path, "(?i)") {
+					matchCase, path = false, path[4:]
+				}
+				var list goatcounter.HitLists
+				err := list.ListPathsLike(r.Context(), path, false, matchCase)
+				return list, err
+			}
+		)
+		for line := range strings.SplitSeq(args.Input, "\n") {
+			i++
+			line = strings.TrimSpace(line)
+			if len(line) == 0 || line[0] == '#' {
+				continue
+			}
+			fields := strings.Fields(line)
+			switch strings.ToLower(fields[0]) {
+			default:
+				errs.Append(fmt.Errorf("line %d: unknown command %q", i, fields[0]))
+			case "rename":
+				if len(fields) != 3 {
+					errs.Append(fmt.Errorf(`line %d: wrong number of fields (%d): expect 3: "RENAME old-path new-path"`, i, len(fields)))
+					continue
+				}
+				list, err := find(fields[1])
+				if err != nil {
+					return err
+				}
+				if len(list) == 0 {
+					errs.Append(fmt.Errorf("line %d: nothing matches %q", i, fields[1]))
+					continue
+				}
+
+				key := renameKey{Path: fields[2]}
+				if id, ok := dsts[fields[2]]; ok {
+					key.ID = id
+				} else {
+					var dst goatcounter.Path
+					err = dst.ByPath(r.Context(), fields[2])
+					if err != nil && !zdb.ErrNoRows(err) {
+						return err
+					}
+					key.ID = dst.ID
+					dsts[fields[2]] = dst.ID
+				}
+				renames[key] = append(renames[key], list...)
+			case "delete":
+				if len(fields) != 2 {
+					errs.Append(fmt.Errorf(`line %d: wrong number of fields (%d): expect 2: "DELETE path"`, i, len(fields)))
+					continue
+				}
+
+				list, err := find(fields[1])
+				if err != nil {
+					return err
+				}
+				if len(list) == 0 {
+					errs.Append(fmt.Errorf("line %d: nothing matches %q", i, fields[1]))
+					continue
+				}
+				deletes = append(deletes, list...)
+			}
+		}
+	}
+
+	if errs.Len() > 0 {
+		w.WriteHeader(400)
+	}
+	return zhttp.Template(w, "settings_batchpurge.gohtml", struct {
+		Globals
+		Input   string
+		Errors  []error
+		Deletes goatcounter.HitLists
+		Renames map[renameKey]goatcounter.HitLists
+	}{newGlobals(w, r), args.Input, errs.Unwrap(), deletes, renames})
+}
+
 func (h settings) purge(w http.ResponseWriter, r *http.Request) error {
 	var (
 		path       = strings.TrimSpace(r.URL.Query().Get("path"))
@@ -610,70 +779,119 @@ func (h settings) exportDownload(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (h settings) exportImport(w http.ResponseWriter, r *http.Request) error {
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*1024*500)
+
 	v := goatcounter.NewValidate(r.Context())
 	replace := v.Boolean("replace", r.Form.Get("replace"))
 	if v.HasErrors() {
 		return v
 	}
 
-	file, head, err := r.FormFile("csv")
+	format := r.Form.Get("format")
+	switch format {
+	default:
+		return guru.Errorf(400, "unknown format: %q", format)
+	case "csv", "json":
+		// Okay, don't need to do anything.
+	}
+
+	file, head, err := r.FormFile(format)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	var fp io.ReadCloser = file
-	if strings.HasSuffix(head.Filename, ".gz") {
-		fp, err = gzip.NewReader(file)
-		if err != nil {
-			return guru.New(400, T(r.Context(), "error/could-not-read|Could not read as gzip: %(err)", err))
+	switch format {
+	case "json":
+		if !strings.HasSuffix(head.Filename, ".zip") {
+			return guru.New(400, "JSON import must be as a .zip file")
 		}
-	}
-	defer fp.Close()
+		tmp, err := zhttp.SaveUpload(file, head)
+		if err != nil {
+			return err
+		}
 
-	user := User(r.Context())
-	ctx := context.WithoutCancel(r.Context())
-	n := 0
-	bgrun.RunFunction(fmt.Sprintf("import:%d", Site(ctx).ID), func() {
-		firstHitAt, err := goatcounter.ImportCSV(ctx, fp, replace, true, func(hit goatcounter.Hit, final bool) {
-			if final {
-				return
+		user := User(r.Context())
+		ctx := context.WithoutCancel(r.Context())
+		bgrun.RunFunction(fmt.Sprintf("import:%d", Site(ctx).ID), func() {
+			firstHitAt, err := goatcounter.ImportJSON(ctx, tmp, replace, true)
+			if err != nil {
+				if err != nil {
+					if e, ok := err.(*errors.StackErr); ok {
+						err = e.Unwrap()
+					}
+
+					sendErr := blackmail.Get(ctx).Send("GoatCounter import error",
+						blackmail.From("GoatCounter import", goatcounter.Config(r.Context()).EmailFrom),
+						blackmail.To(user.Email),
+						blackmail.HeadersAutoreply(),
+						blackmail.BodyMustText(goatcounter.TplEmailImportError{Context: r.Context(), Error: err}.Render))
+					if sendErr != nil {
+						log.Error(ctx, sendErr)
+					}
+				}
 			}
-
-			goatcounter.Memstore.Append(hit)
-			n++
-
-			// Spread out the load a bit.
-			if n%5000 == 0 {
-				err := cron.TaskPersistAndStat()
+			if firstHitAt != nil && !firstHitAt.IsZero() {
+				err := Site(ctx).UpdateFirstHitAt(ctx, *firstHitAt)
 				if err != nil {
 					log.Error(ctx, err)
 				}
-				cron.WaitPersistAndStat()
 			}
 		})
-		if err != nil {
-			if e, ok := err.(*errors.StackErr); ok {
-				err = e.Unwrap()
-			}
 
-			sendErr := blackmail.Get(ctx).Send("GoatCounter import error",
-				blackmail.From("GoatCounter import", goatcounter.Config(r.Context()).EmailFrom),
-				blackmail.To(user.Email),
-				blackmail.HeadersAutoreply(),
-				blackmail.BodyMustText(goatcounter.TplEmailImportError{r.Context(), err}.Render))
-			if sendErr != nil {
-				log.Error(ctx, sendErr)
-			}
-		}
-
-		if firstHitAt != nil && !firstHitAt.IsZero() {
-			err := Site(ctx).UpdateFirstHitAt(ctx, *firstHitAt)
+	case "csv":
+		var fp io.ReadCloser = file
+		if strings.HasSuffix(head.Filename, ".gz") {
+			fp, err = gzip.NewReader(file)
 			if err != nil {
-				log.Error(ctx, err)
+				return guru.New(400, T(r.Context(), "error/could-not-read|Could not read as gzip: %(err)", err))
 			}
 		}
-	})
+		defer fp.Close()
+
+		user := User(r.Context())
+		ctx := context.WithoutCancel(r.Context())
+		n := 0
+		bgrun.RunFunction(fmt.Sprintf("import:%d", Site(ctx).ID), func() {
+			firstHitAt, err := goatcounter.ImportCSV(ctx, fp, replace, true, func(hit goatcounter.Hit, final bool) {
+				if final {
+					return
+				}
+
+				goatcounter.Memstore.Append(hit)
+				n++
+
+				// Spread out the load a bit.
+				if n%5000 == 0 {
+					err := cron.TaskPersistAndStat()
+					if err != nil {
+						log.Error(ctx, err)
+					}
+					cron.WaitPersistAndStat()
+				}
+			})
+			if err != nil {
+				if e, ok := err.(*errors.StackErr); ok {
+					err = e.Unwrap()
+				}
+
+				sendErr := blackmail.Get(ctx).Send("GoatCounter import error",
+					blackmail.From("GoatCounter import", goatcounter.Config(r.Context()).EmailFrom),
+					blackmail.To(user.Email),
+					blackmail.HeadersAutoreply(),
+					blackmail.BodyMustText(goatcounter.TplEmailImportError{Context: r.Context(), Error: err}.Render))
+				if sendErr != nil {
+					log.Error(ctx, sendErr)
+				}
+			}
+			if firstHitAt != nil && !firstHitAt.IsZero() {
+				err := Site(ctx).UpdateFirstHitAt(ctx, *firstHitAt)
+				if err != nil {
+					log.Error(ctx, err)
+				}
+			}
+		})
+	}
 
 	zhttp.Flash(w, r, T(r.Context(),
 		"notify/import-started-in-background|Import started in the background; you’ll get an email when it’s done."))
@@ -681,6 +899,7 @@ func (h settings) exportImport(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (h settings) exportImportGA(w http.ResponseWriter, r *http.Request) error {
+	r.Body = http.MaxBytesReader(w, r.Body, 1024*1024*500)
 	file, head, err := r.FormFile("csv")
 	if err != nil {
 		return err
@@ -708,23 +927,48 @@ func (h settings) exportImportGA(w http.ResponseWriter, r *http.Request) error {
 func (h settings) exportStart(w http.ResponseWriter, r *http.Request) error {
 	r.ParseForm()
 
-	v := goatcounter.NewValidate(r.Context())
-	startFrom := goatcounter.HitID(v.Integer("startFrom", r.Form.Get("startFrom")))
-	if v.HasErrors() {
-		return v
+	if !r.Form.Has("format") {
+		return guru.New(400, `"format" missing`)
+	}
+	switch r.Form.Get("format") {
+	default:
+		return guru.Errorf(400, "unknown format: %q", r.Form.Get("format"))
+
+	case "json":
+		v := goatcounter.NewValidate(r.Context())
+		periodStart := v.Date("period-start", r.Form.Get("period-start"), "2006-01-02")
+		if v.HasErrors() {
+			return v
+		}
+
+		var export goatcounter.Export
+		fp, err := export.CreateJSON(r.Context(), periodStart)
+		if err != nil {
+			return err
+		}
+		ctx := context.WithoutCancel(r.Context())
+		bgrun.RunFunction(fmt.Sprintf("export web:%d", Site(ctx).ID),
+			func() { export.RunJSON(ctx, fp, true) })
+
+	case "csv":
+		v := goatcounter.NewValidate(r.Context())
+		startFrom := goatcounter.HitID(v.Integer("start-from", r.Form.Get("start-from")))
+		if v.HasErrors() {
+			return v
+		}
+
+		var export goatcounter.Export
+		fp, err := export.CreateCSV(r.Context(), startFrom)
+		if err != nil {
+			return err
+		}
+		ctx := context.WithoutCancel(r.Context())
+		bgrun.RunFunction(fmt.Sprintf("export web:%d", Site(ctx).ID),
+			func() { export.RunCSV(ctx, fp, true) })
 	}
 
-	var export goatcounter.Export
-	fp, err := export.CreateCSV(r.Context(), startFrom)
-	if err != nil {
-		return err
-	}
-
-	ctx := context.WithoutCancel(r.Context())
-	bgrun.RunFunction(fmt.Sprintf("export web:%d", Site(ctx).ID),
-		func() { export.RunCSV(ctx, fp, true) })
-
-	zhttp.Flash(w, r, T(r.Context(), "notify/export-started-in-background|Export started in the background; you’ll get an email with a download link when it’s done."))
+	zhttp.Flash(w, r, T(r.Context(), `notify/export-started-in-background|
+		Export started in the background; you’ll get an email with a download link when it’s done.`))
 	return zhttp.SeeOther(w, "/settings/export")
 }
 
@@ -969,7 +1213,13 @@ func (h settings) usersAdd(w http.ResponseWriter, r *http.Request) error {
 			fmt.Sprintf("A GoatCounter account was created for you at %s", account.Display(ctx)),
 			blackmail.From("GoatCounter", goatcounter.Config(r.Context()).EmailFrom),
 			blackmail.To(newUser.Email),
-			blackmail.BodyMustText(goatcounter.TplEmailAddUser{ctx, *account, newUser, goatcounter.GetUser(ctx).Email}.Render),
+			blackmail.Headers("Reply-To", goatcounter.MustGetUser(ctx).Email),
+			blackmail.BodyMustText(goatcounter.TplEmailAddUser{
+				Context: ctx,
+				Site:    *account,
+				NewUser: newUser,
+				AddedBy: goatcounter.GetUser(ctx).Email,
+			}.Render),
 		)
 		if err != nil {
 			log.Errorf(ctx, ": %s", err)

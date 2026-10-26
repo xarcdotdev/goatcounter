@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -58,7 +59,12 @@ func (h backend) Mount(r chi.Router, db zdb.DB, dev, saas bool, domainStatic str
 		mware.NoStore(),
 		middleware.Compress(5))
 	if log.HasDebug("req") {
-		r.Use(mware.RequestLog(nil, nil, "/count"))
+		opt := &mware.RequestLogOptions{}
+		if !dev {
+			opt.Host = true
+			opt.TimeFmt = time.DateTime
+		}
+		r.Use(mware.RequestLog(opt, nil, "/count", "/api/v0/count", "/loader", "/robots.txt"))
 	}
 
 	fsys, err := zfs.EmbedOrDir(goatcounter.Templates, "", dev)
@@ -91,17 +97,17 @@ func (h backend) Mount(r chi.Router, db zdb.DB, dev, saas bool, domainStatic str
 		rr.Post("/csp", zhttp.HandlerCSP())
 
 		// 4 pageviews/second should be more than enough.
-		rate := rr.With(Ratelimit(true, func(r *http.Request) (limiter.Store, string) {
+		rate := rr.With(Ratelimit(true, func(r *http.Request) ([]limiter.Store, string) {
 			if dev {
-				return mustNewMem(1<<30, 1), ""
+				return []limiter.Store{mustNewMem(1<<30, 1)}, ""
 			}
 			// From httpbuf
 			// TODO: in some setups this may always be true, e.g. when proxy
 			// through nginx without settings this properly. Need to check.
 			if r.RemoteAddr == "127.0.0.1" {
-				return mustNewMem(1<<14, 1), ""
+				return []limiter.Store{mustNewMem(1<<14, 1)}, ""
 			}
-			return ratelimits.Count, ""
+			return []limiter.Store{ratelimits.Count}, ""
 		}))
 		rate.Get("/count", zhttp.Wrap(h.count))
 		rate.Post("/count", zhttp.Wrap(h.count)) // to support navigator.sendBeacon (JS)

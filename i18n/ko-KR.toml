@@ -1,7 +1,7 @@
 [__meta__]
   language = "ko-KR"
   maintainers = ["<younggjjo@gmail.com>"]
-  modified = 2025-03-19
+  modified = 2025-03-17
 
 ["button/add-new"]
   default = "새로 추가"
@@ -46,6 +46,8 @@
 
 ["button/merge"]
 
+["button/preview"]
+
 ["button/remove"]
   default = "제거"
 
@@ -60,6 +62,8 @@
 
 ["button/reset-password"]
   default = "비밀번호 재설정"
+
+["button/run"]
 
 ["button/save"]
   default = "저장"
@@ -331,6 +335,8 @@
 ["header/created-at"]
   default = "생성일"
 
+["header/csv-format"]
+
 ["header/dashboard"]
   default = "대시보드"
 
@@ -339,6 +345,8 @@
 
 ["header/delete-account"]
   default = "계정 삭제"
+
+["header/deleting"]
 
 ["header/domain"]
   default = "도메인"
@@ -357,6 +365,8 @@
 
 ["header/export-to-csv"]
 
+["header/export-to-json"]
+
 ["header/fewer-number"]
 
 ["header/finished"]
@@ -368,12 +378,18 @@
 ["header/forgot-password"]
   default = "비밀번호 찾기"
 
+["header/format"]
+
 ["header/hash"]
   default = "해시"
 
 ["header/import-from-csv"]
 
 ["header/import-from-ga"]
+
+["header/import-from-json"]
+
+["header/json-format"]
 
 ["header/l10n"]
   default = "지역화"
@@ -396,6 +412,8 @@
 
 ["header/merge-account"]
 
+["header/merging-to"]
+
 ["header/mfa"]
   default = "다중 인증 (MFA)"
 
@@ -404,6 +422,8 @@
 
 ["header/name"]
   default = "이름"
+
+["header/other-formats"]
 
 ["header/pagination-cursor"]
   default = "페이지네이션 커서"
@@ -419,6 +439,8 @@
 
 ["header/preferences"]
   default = "환경설정"
+
+["header/renaming"]
 
 ["header/reset-password"]
   default = "%(site-name)에서 %(email) 사용자의 비밀번호 재설정"
@@ -620,6 +642,8 @@
 
 ["label/email-reports"]
 
+["label/export-from-date"]
+
 ["label/fewer-numbers"]
 
 ["label/for-following-countries"]
@@ -742,6 +766,8 @@
 
 ["label/your-site"]
   default = "당신의 사이트"
+
+["label/zip-file"]
 
 ["link/add-translation"]
   default = "번역 추가 또는 업데이트"
@@ -1001,6 +1027,8 @@ GoatCounter는 제한된 API를 제공합니다. 현재 API를 통해 페이지�
 
 ["p/export-csv"]
 
+["p/export-from-date"]
+
 ["p/export-process"]
   default = "프로세스를 시작하고 완료되면 다운로드 링크를 이메일로 보내드립니다. 한 시간에 한 번만 진행할 수 있으며, 이전 백업을 덮어씁니다.</p><p>이에는 '봇'으로 표시된 페이지 뷰도 포함되며, 이는 개요에는 표시되지 않습니다."
 
@@ -1009,8 +1037,14 @@ GoatCounter는 제한된 API를 제공합니다. 현재 API를 통해 페이지�
 
 ["p/import-ga"]
 
+["p/json-file-format"]
+
 ["p/last-user"]
   default = "마지막 관리자 사용자를 삭제하거나 편집할 수 없습니다."
+
+["p/link-to-batch-rename"]
+
+["p/manage-batch-hits"]
 
 ["p/manage-hits"]
 
@@ -1175,6 +1209,8 @@ GoatCounter는 제한된 API를 제공합니다. 현재 API를 통해 페이지�
 ["widget-setting/help/align"]
   default = "페이지 차트와 맞추기 위해 왼쪽에 여백을 추가하세요."
 
+["widget-setting/help/by-count"]
+
 ["widget-setting/help/chart-style"]
   default = "차트를 그리는 방법"
 
@@ -1192,6 +1228,8 @@ GoatCounter는 제한된 API를 제공합니다. 현재 API를 통해 페이지�
 
 ["widget-setting/label/align"]
   default = "페이지와 맞추기"
+
+["widget-setting/label/by-count"]
 
 ["widget-setting/label/chart-style"]
   default = "차트 스타일"

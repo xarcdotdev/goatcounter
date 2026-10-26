@@ -1,7 +1,7 @@
 [__meta__]
   language = "fr-FR"
-  maintainers = ['olivier.potonniee@thalesgroup.com']
-  modified = 2026-03-23
+  maintainers = ["olivier.potonniee@thalesgroup.com"]
+  modified = 2026-07-19
 
 ["button/add-new"]
   default = "Ajouter"
@@ -31,6 +31,7 @@
   default = "Oui, supprimez tout"
 
 ["button/delete-pageviews"]
+  default = "Supprimer les pages vues"
 
 ["button/disable-mfa"]
   default = "Désactiver MFA"
@@ -45,6 +46,9 @@
   default = "Mot de passe oublié ?"
 
 ["button/merge"]
+  default = "Fusionner"
+
+["button/preview"]
 
 ["button/remove"]
   default = "Supprimer"
@@ -53,13 +57,15 @@
   default = "Demander la réinitialisation du mot de passe"
 
 ["button/resend-email"]
-  default = "Ré-envoyer le mél"
+  default = "Ré-envoyer le e-mail"
 
 ["button/reset-defaults"]
   default = "Valeurs par défaut"
 
 ["button/reset-password"]
   default = "Réinitialiser le mot de passe"
+
+["button/run"]
 
 ["button/save"]
   default = "Enregistrer"
@@ -68,11 +74,13 @@
   default = "Enregistrer la vue par défaut"
 
 ["button/search"]
+  default = "Rechercher"
 
 ["button/send-login-url"]
   default = "Recevoir l'URL de connexion"
 
 ["button/show"]
+  default = "afficher"
 
 ["button/sign-in"]
   default = "Connexion"
@@ -87,6 +95,7 @@
   default = "Valider"
 
 ["button/upload-ga-import"]
+  default = "Charger"
 
 ["confirm/delete-user"]
   default = "Supprimer %(email) ?"
@@ -100,6 +109,7 @@
   many    = "Plusieurs"
 
 ["dashboard/loading"]
+  default = "Chargement..."
 
 ["dashboard/month-ago"]
   default = "il y a %(n) mois"
@@ -113,6 +123,7 @@
   default = "Rien à afficher"
 
 ["dashboard/pages/change"]
+  default = "Modifier"
 
 ["dashboard/pages/header"]
   default = "Pages"
@@ -156,6 +167,7 @@
   default = "Nom du pays, par exemple Belgique, Indonésie, etc..."
 
 ["data-collect/help/hits"]
+  default = "Enregistrez les consultations de pages individuelles en vue d'une exportation. Cela n'a aucune incidence sur le reste. L'API peut toujours être utilisée pour exporter des données agrégées."
 
 ["data-collect/help/language"]
   default = "Les langues indiquées par l'en-tête Accept-Language"
@@ -179,6 +191,7 @@
   default = "Pays"
 
 ["data-collect/label/hits"]
+  default = "Nombre de pages vues"
 
 ["data-collect/label/language"]
   default = "Langue"
@@ -208,16 +221,22 @@
   default = "Mois précédent"
 
 ["dont-lock"]
+  default = "Ne pas verrouiller"
 
 ["email-report/daily"]
+  default = "Quotidien"
 
 ["email-report/monthly"]
+  default = "Mensuel"
 
 ["email-report/never"]
+  default = "Jamais"
 
 ["email-report/two-weeks"]
+  default = "Toutes les deux semaines"
 
 ["email-report/weekly"]
+  default = "Hebdomadaire"
 
 ["email/header"]
   default = "Bonjour,"
@@ -235,7 +254,7 @@ Vous pouvez le faire ici :
 
 ["email/signature"]
   default = """
-Vous avez des problèmes, des questions, des commentaires ou autre chose à me dire ? Répondez simplement à ce mél.
+Vous avez des problèmes, des questions, des commentaires ou autre chose à me dire ? Répondez simplement à cet e-mail.
 
 A plus,
 Martin
@@ -257,6 +276,7 @@ Martin
   default = "C'est avant la création du site ! GoatCounter ne peut pas faire de miracle ;-)"
 
 ["error/email-exists"]
+  default = "L'adresse e-mail « %(email) » est déjà utilisée par un autre utilisateur sur ce site."
 
 ["error/export-expired"]
   default = "Il semble qu'il n'y ait pas encore d'exportation ou qu'elle ait expiré."
@@ -289,6 +309,7 @@ Martin
   default = "Mot de passe incorrect pour %(email)"
 
 ["error/merge-self"]
+  default = "Impossible de fusionner un chemin avec lui-même"
 
 ["error/not-found"]
   default = "Non trouvé"
@@ -300,6 +321,7 @@ Martin
   default = "Pas un compte pour ce site : %(email)"
 
 ["error/unknown-activation-token"]
+  default = "Jeton d'activation inconnu"
 
 ["event"]
   default = "évènement"
@@ -311,6 +333,7 @@ Martin
   default = "Accès"
 
 ["header/add-api-token"]
+  default = "Ajouter un nouveau jeton API"
 
 ["header/add-new-user"]
   default = "Ajouter un nouvel utilisateur"
@@ -342,6 +365,8 @@ Martin
 ["header/created-at"]
   default = "Créé le"
 
+["header/csv-format"]
+
 ["header/dashboard"]
   default = "Tableau de bord"
 
@@ -350,6 +375,8 @@ Martin
 
 ["header/delete-account"]
   default = "Supprimer le compte"
+
+["header/deleting"]
 
 ["header/domain"]
   default = "Domaine"
@@ -361,15 +388,17 @@ Martin
   default = "Modifier l'utilisateur %(email)"
 
 ["header/email"]
-  default = "Mél"
-
-["header/export"]
-  default = "Export"
+  default = "E-mail"
 
 ["header/export-or-import"]
   default = "Export / Import"
 
+["header/export-to-csv"]
+
+["header/export-to-json"]
+
 ["header/fewer-number"]
+  default = "Afficher moins de chiffres"
 
 ["header/finished"]
   default = "Terminé"
@@ -380,11 +409,18 @@ Martin
 ["header/forgot-password"]
   default = "Mot de passe oublié"
 
+["header/format"]
+
 ["header/hash"]
   default = "Hash"
 
-["header/import"]
-  default = "Importation"
+["header/import-from-csv"]
+
+["header/import-from-ga"]
+
+["header/import-from-json"]
+
+["header/json-format"]
 
 ["header/l10n"]
   default = "Traduction"
@@ -396,6 +432,7 @@ Martin
   default = "10 derniers exports"
 
 ["header/last-used-at"]
+  default = "Dernière utilisation"
 
 ["header/locations"]
   default = "Pays"
@@ -404,8 +441,12 @@ Martin
   default = "Emplacements pour: %(country)"
 
 ["header/manage-pageviews"]
+  default = "Gérer les pages vues"
 
 ["header/merge-account"]
+  default = "Fusionner des comptes"
+
+["header/merging-to"]
 
 ["header/mfa"]
   default = "Authentification multi-facteur"
@@ -415,6 +456,8 @@ Martin
 
 ["header/name"]
   default = "Nom"
+
+["header/other-formats"]
 
 ["header/pagination-cursor"]
   default = "Curseur de pagination"
@@ -430,6 +473,8 @@ Martin
 
 ["header/preferences"]
   default = "Préférences"
+
+["header/renaming"]
 
 ["header/reset-password"]
   default = "Réinitialiser le mot de passe de %(email) pour %(site-name)"
@@ -453,6 +498,7 @@ Martin
   default = "Tailles écrans"
 
 ["header/start-pagination-cursor"]
+  default = "À partir du curseur de pagination"
 
 ["header/started"]
   default = "Démarré"
@@ -482,6 +528,7 @@ Martin
   default = "Utilisateurs"
 
 ["help/allow-embed"]
+  default = "Liste, séparée par des virgules, des domaines ou des URL pouvant intégrer GoatCounter dans un cadre ; %[full documentation]."
 
 ["help/allow-visitor-counts"]
   default = "Reportez-vous à la %[documentation] pour plus d'explications"
@@ -493,6 +540,7 @@ Martin
   default = "Vous accéderez à votre site à l'adresse https://<em>[my-code]</em>.%(domain)."
 
 ["help/configure-dashboard"]
+  default = "Configurer le tableau de bord"
 
 ["help/custom-domain"]
   default = """
@@ -504,6 +552,10 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Définir un enregistrement CNAME pour <code>%(domain)</code> – Voir les %[%docs instructions détaillées]."
 
 ["help/custom-domain-error"]
+  default = """
+%[%error Not yet verified] ; configurez un enregistrement CNAME vers <code>%(domain)</code> – %[%docs detailed instructions].
+La vérification s'effectue toutes les 2 heures.
+"""
 
 ["help/custom-domain-verified"]
   default = "Domaine vérifié et configuré (note : le certificat peut prendre jusqu'à une heure pour fonctionner)."
@@ -512,6 +564,7 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Les pages vues et toutes les données associées seront définitivement supprimées après ce nombre de jours. Mettre <code>0</code> pour ne jamais supprimer."
 
 ["help/datepicker"]
+  default = "GoatCounter utilise un sélecteur de date JavaScript personnalisé sur les ordinateurs de bureau, car cela offre souvent une meilleure expérience utilisateur. Vous pouvez le désactiver pour utiliser le sélecteur de date natif. Sur les appareils mobiles, il utilise systématiquement le sélecteur de date natif."
 
 ["help/domain-access"]
   default = "Domaine à partir duquel accéder à ce site."
@@ -520,10 +573,18 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Utilisez le drag & drop pour trier"
 
 ["help/email-reports"]
+  default = "Les rapports sont envoyés le premier jour de la nouvelle période (par exemple, le premier jour du mois)."
 
 ["help/fewer-numbers"]
+  default = """
+N'affichez pas de chiffres sur le tableau de bord. L'objectif est de
+continuer à offrir une vue d'ensemble raisonnablement utile de ce qui se passe sur
+votre site, tout en évitant une « obsession » pour le nombre exact
+de visiteurs et les statistiques.
+"""
 
 ["help/fewer-numbers-lock"]
+  default = "Vous ne pourrez pas désactiver ce paramètre pendant la période indiquée."
 
 ["help/for-the-following-countries"]
   default = "Liste des codes pays (%[list]; utilisez la codification alpha-2); laissez en blanc pour avoir tous les pays (si activé)."
@@ -535,13 +596,20 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Ne pas compter les accès provenant de ces adresses IP (liste d'adresses séparées par des virgules, correspondances exactes). %[Ajoutez votre IP actuelle]."
 
 ["help/ignore-ips-2"]
+  default = "Vous pouvez également %[disable for this browser] (cliquez à nouveau pour l'activer)."
 
 ["help/locked-until"]
+  default = "Verrouillé jusqu'au %(date)"
 
 ["help/need-cities"]
+  default = """
+Cette option nécessite la version « Cities » de la
+base de données GeoIP. Consultez l'indicateur <tt>-geo</tt> dans
+<tt>goatcounter help serve</tt>.
+"""
 
 ["help/new-user-email"]
-  default = "Adresse mél avec laquelle se connecter."
+  default = "Adresse e-mail avec laquelle se connecter."
 
 ["help/new-user-email-confirm"]
   default = "Email utilisé pour se connecter avec (devra être validé pour être actif)."
@@ -553,7 +621,7 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Laissez le champ vide pour ne pas le modifier."
 
 ["help/password-new-user"]
-  default = "Peut être laissé vide pour recevoir un mél pour réinitialiser le mot de passe."
+  default = "Peut être laissé vide pour recevoir un e-mail pour réinitialiser le mot de passe."
 
 ["help/public"]
   default = "Définissez qui peut voir le tableau de bord."
@@ -571,6 +639,7 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Système horaire sur 24 heures (13:00)"
 
 ["label/access-to-sites"]
+  default = "Accès aux sites"
 
 ["label/add-new"]
   default = "Ajouter un nouveau"
@@ -585,6 +654,7 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Statistiques navigateur"
 
 ["label/campaigns"]
+  default = "Campagnes"
 
 ["label/change-code"]
   default = "Vous accéderez à votre compte à l'adresse https://<em>[my-code]</em>.%(domain) – %[%link modifier ce code]."
@@ -605,6 +675,7 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Nom de domaine personnalisé"
 
 ["label/dashboard-allow-embed"]
+  default = "Sites pouvant intégrer GoatCounter"
 
 ["label/dashboard-public"]
   default = "Tableau de bord visible par"
@@ -616,19 +687,24 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Format de date"
 
 ["label/datepicker"]
+  default = "Activer le sélecteur de date personnalisé"
 
 ["label/delete-account-confirmation"]
   default = "Êtes-vous certain de vouloir supprimer l'intégralité de votre compte ?"
 
 ["label/email"]
-  default = "Adresse mél"
+  default = "e-mail"
 
 ["label/email-address"]
-  default = "Adresse mél"
+  default = "Adresse e-mail"
 
 ["label/email-reports"]
+  default = "Envoyer des rapports par e-mail"
+
+["label/export-from-date"]
 
 ["label/fewer-numbers"]
+  default = "Afficher moins de chiffres"
 
 ["label/for-following-countries"]
   default = "Pour les pays suivants seulement"
@@ -649,18 +725,22 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Statistiques de localisation"
 
 ["label/lock-setting"]
+  default = "Réglage du verrouillage"
 
 ["label/mark-current"]
   default = "(courant)"
 
 ["label/match-case"]
+  default = "Tenir compte de la casse"
 
 ["label/match-title"]
   default = "Gérer aussi la correspondance sur le titre"
 
 ["label/merge-account-confirmation"]
+  default = "Êtes-vous sûr de vouloir fusionner ce compte ?"
 
 ["label/merge-to"]
+  default = "Fusionner tous les chemins vers"
 
 ["label/mfa-token"]
   default = "Jeton MFA"
@@ -723,6 +803,7 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Statistiques sur le système"
 
 ["label/theme"]
+  default = "Thème"
 
 ["label/thousand-separator"]
   default = "Séparateur de milliers"
@@ -731,6 +812,7 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Fuseau horaire"
 
 ["label/topref"]
+  default = "Meilleurs referers"
 
 ["label/total-pageviews"]
   default = "Nombre total de pages vues pour le site"
@@ -745,10 +827,12 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Semaine démarre le Dimanche"
 
 ["label/your-email"]
-  default = "Votre mél"
+  default = "Votre e-mail"
 
 ["label/your-site"]
   default = "Votre site"
+
+["label/zip-file"]
 
 ["link/add-translation"]
   default = "Ajouter ou modifier une traduction"
@@ -919,7 +1003,7 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Authentification multi-facteur activée."
 
 ["notify/need-email-verification-for-api"]
-  default = "Vous devez valider votre adresse mél avant de pouvoir utiliser l'API."
+  default = "Vous devez valider votre adresse e-mail avant de pouvoir utiliser l'API."
 
 ["notify/no-user-for-token"]
   default = "n'a pas pu trouver l'utilisateur pour le jeton donné ; peut-être a-t-il expiré ou a-t-il déjà été utilisé ?"
@@ -934,7 +1018,7 @@ Domaine personnalisé, par exemple <em>“stats.example.com”</em>.<br>
   default = "Réinitialisation des valeurs par défaut !"
 
 ["notify/reset-user-sent"]
-  default = "Un mél a été envoyé à %(email)"
+  default = "Un e-mail a été envoyé à %(email)"
 
 ["notify/restored-previously-deleted-site"]
   default = "Le site '%(url)' avait été supprimé auparavant ; il a été restauré avec toutes ses données."
@@ -992,7 +1076,7 @@ et l'ancien code peut être réenregistré par n’importe qui ; si vous l’uti
 """
 
 ["p/change-email"]
-  default = "Modifier l'adresse mél dans %[settings]."
+  default = "Modifier l'adresse e-mail dans %[settings]."
 
 ["p/collect-disabled"]
   default = "La collecte de ces informations est actuellement %[désactivée dans les paramètres]."
@@ -1021,6 +1105,8 @@ L'exportation CSV nécessite que la collecte des pages vues soit activée dans l
 <p>Vous pouvez toujours utiliser l'API pour obtenir les statistiques agrégées utilisées sur le tableau de bord ; voir la documentation de l'API %[%api API docs].</p>
 """
 
+["p/export-from-date"]
+
 ["p/export-process"]
   default = "<p>Démarrer le processus et vous envoyer un lien de téléchargement une fois que c'est fait. une fois qu'il est terminé. Vous ne pouvez effectuer cette opération qu'une fois par heure et elle annulera toutes les sauvegardes précédentes. sauvegardes précédentes que vous pourriez avoir.</p>"
 
@@ -1028,13 +1114,26 @@ L'exportation CSV nécessite que la collecte des pages vues soit activée dans l
   default = "Ce compte est protégé par une authentification multi-facteurs (MFA) ; veuillez saisir le code de votre application d'authentification."
 
 ["p/import-ga"]
+  default = """
+Google Analytics ne propose pas d’exportations pertinentes ; il ne propose que %[%ga exporting “reports”]. Cela donne un aperçu des totaux par chemin, sans ventilation par date. Ces données ne sont pas suffisantes pour que GoatCounter puisse les afficher, mais vous pouvez les « importer » et elles seront ajoutées aux totaux du %[%vc Visitor Counter].
+<br><br>
+La mise à jour des chiffres du compteur de visiteurs peut prendre jusqu’à 30 minutes.
+"""
+
+["p/json-file-format"]
 
 ["p/last-user"]
   default = "Impossible de supprimer ou modifier le dernier administrateur"
 
+["p/link-to-batch-rename"]
+
+["p/manage-batch-hits"]
+
 ["p/manage-hits"]
+  default = "Supprimer ou fusionner les pages vues."
 
 ["p/merge-account"]
+  default = "Vous pouvez fusionner des comptes dont l'utilisateur administrateur dispose d'une adresse e-mail vérifiée identique à votre adresse e-mail actuelle."
 
 ["p/no-data"]
   default = "%[%pre %(js_code)]"
@@ -1046,11 +1145,13 @@ L'exportation CSV nécessite que la collecte des pages vues soit activée dans l
   default = "Prendra effet immédiatement"
 
 ["p/notify-pagination-cursor"]
+  default = "Un « curseur de pagination » apparaîtra dans l'e-mail ; si vous le remplissez ici, seules les pages vues enregistrées après la dernière exportation seront exportées."
 
 ["p/notify-site-deletion"]
   default = "%(number) sites seront supprimés"
 
 ["p/num-accounts"]
+  default = "Ce compte contient %(n) sites :"
 
 ["p/remove-site-confirm"]
   default = """
@@ -1068,6 +1169,14 @@ Il s'agit du <strong>site en cours</strong> et cela va supprimer <strong>toutes 
 """
 
 ["p/rm-hits-help"]
+  default = """
+<ul><\\
+<li><code>%</code> est un caractère générique ; par exemple, <code>/page%.html</code> correspond à tout ce qui commence par <code>/page</code> et se termine par <code>.html</code>.</li>
+<li><code>_</code> correspond à n'importe quel caractère ; par exemple, <code>_.html</code> correspond à <code>a.html</code> et <code>b.html</code>.</li>
+<li>Utilisez <code>\\%</code> et <code>\\_</code> pour les caractères littéraux sans signification particulière.</li>
+<li>Utilisez deux barres obliques inversées (<code>\\\\</code>) pour faire correspondre une seule barre oblique inversée.</li>
+</ul>
+"""
 
 ["p/rm-pageview-match"]
   default = "Les chemins suivant correspondent à %(query):"
@@ -1087,7 +1196,7 @@ Le domaine de votre site, par exemple <em>\\\"www.example.com\\\"</em>, utilisé
   default = "Y compris les paramètres de conservation et de collecte des données !"
 
 ["p/verify-email"]
-  default = "Veuillez valider votre adresse mél en cliquant sur le lien envoyé à %(email). %[%sup (Pourquoi ?)]"
+  default = "Votre adresse e-mail %(email) n'est pas vérifiée ; vous devez la vérifier avant de pouvoir fusionner vos comptes."
 
 ["page-ranking"]
   default = "Classement des pages"
@@ -1096,12 +1205,16 @@ Le domaine de votre site, par exemple <em>\\\"www.example.com\\\"</em>, utilisé
   default = "Mettre l'échelle de l'axe Y de tous les graphiques à la valeur maximum de ce graphique (%(n))"
 
 ["theme/dark"]
+  default = "Sombre"
 
 ["theme/light"]
+  default = "Clair"
 
 ["theme/system"]
+  default = "Utiliser les paramètres système"
 
 ["tooltip/change-period"]
+  default = "Évolution par rapport à la période précédente"
 
 ["top-nav/back"]
   default = "Retour"
@@ -1110,6 +1223,7 @@ Le domaine de votre site, par exemple <em>\\\"www.example.com\\\"</em>, utilisé
   default = "Tableau de bord"
 
 ["top-nav/documentation"]
+  default = "Aide"
 
 ["top-nav/need-js"]
   default = "GoatCounter a besoin de JavaScript pour fonctionner ; veuillez autoriser l'exécution de JavaScript à partir de %(domaine)."
@@ -1151,7 +1265,7 @@ Le domaine de votre site, par exemple <em>\\\"www.example.com\\\"</em>, utilisé
   default = "doit être un domaine valide"
 
 ["validate/email"]
-  default = "doit être une adresse mél valide"
+  default = "doit être une adresse e-mail valide"
 
 ["validate/exclude"]
   default = "ne peut pas être '%s'"
@@ -1178,6 +1292,7 @@ Le domaine de votre site, par exemple <em>\\\"www.example.com\\\"</em>, utilisé
   default = "doit compter moins de %d caractères"
 
 ["validate/need-one"]
+  default = "doit sélectionner au moins un"
 
 ["validate/phone"]
   default = "doit être un numéro de téléphone valide"
@@ -1202,6 +1317,8 @@ Le domaine de votre site, par exemple <em>\\\"www.example.com\\\"</em>, utilisé
 ["widget-setting/help/align"]
   default = "Ajouter une marge à gauche pour aligner sur les graphiques"
 
+["widget-setting/help/by-count"]
+
 ["widget-setting/help/chart-style"]
   default = "Comment présenter les graphiques"
 
@@ -1219,6 +1336,8 @@ Le domaine de votre site, par exemple <em>\\\"www.example.com\\\"</em>, utilisé
 
 ["widget-setting/label/align"]
   default = "Aligner sur les pages"
+
+["widget-setting/label/by-count"]
 
 ["widget-setting/label/chart-style"]
   default = "Type de graphique"

@@ -79,7 +79,7 @@ func strOrErr(msg any) (string, []any) {
 			return m.Error(), attr
 		}
 		if t := sErr.StackTrace(); t != "" {
-			attr = append(attr, "stacktrace", "\n"+t)
+			attr = append(attr, "error_trace", "\n"+t)
 		}
 		return sErr.Unwrap().Error(), attr
 	}

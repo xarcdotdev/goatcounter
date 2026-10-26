@@ -122,7 +122,7 @@ func TestBackendCount(t *testing.T) {
 		{"long path", url.Values{"p": []string{"/" + strings.Repeat("a", 2047)}}, nil, 200, goatcounter.Hit{
 			Path: "/" + strings.Repeat("a", 2047),
 		}},
-		{"too long", url.Values{"p": []string{"/" + strings.Repeat("a", 2048)}}, nil, 414, goatcounter.Hit{}},
+		{"too long", url.Values{"p": []string{"/" + strings.Repeat("a", 2048)}}, nil, 400, goatcounter.Hit{}},
 	}
 
 	for _, tt := range tests {
@@ -286,19 +286,19 @@ func TestBackendCountSessions(t *testing.T) {
 
 		// TODO: test in order.
 		sort.Slice(want, func(i, j int) bool { return want[i][1] < want[j][1] })
-		var w string
+		var w strings.Builder
 		for _, ww := range want {
-			w += ww.Format(16) + " "
+			w.WriteString(ww.Format(16) + " ")
 		}
 
 		sort.Slice(got, func(i, j int) bool { return got[i][1] < got[j][1] })
-		var g string
+		var g strings.Builder
 		for _, gg := range got {
-			g += gg.Format(16) + " "
+			g.WriteString(gg.Format(16) + " ")
 		}
 
-		if w != g {
-			t.Errorf("wrong session\nwant: %s\ngot:  %s", w, g)
+		if w.String() != g.String() {
+			t.Errorf("wrong session\nwant: %s\ngot:  %s", w.String(), g.String())
 		}
 	}
 

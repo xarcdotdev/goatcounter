@@ -11,6 +11,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/lib/pq"
+	"github.com/lib/pq/pqerror"
 	"zgo.at/errors"
 	"zgo.at/goatcounter/v2"
 	"zgo.at/goatcounter/v2/pkg/log"
@@ -28,15 +30,22 @@ import (
 )
 
 func (h backend) dashboard(w http.ResponseWriter, r *http.Request) error {
-	m := metrics.Start(r.Host)
-	defer m.Done()
+	var (
+		site       = Site(r.Context())
+		user       = User(r.Context())
+		publicView = site.Settings.IsPublic() && User(r.Context()).ID == 0
+	)
 
-	site := Site(r.Context())
-	user := User(r.Context())
+	k := r.Host
+	if publicView {
+		k += "-public"
+	}
+	m := metrics.Start(k)
+	defer m.Done()
 
 	// Cache much more aggressively for public displays. Don't care so much if
 	// it's outdated by an hour.
-	if site.Settings.IsPublic() && User(r.Context()).ID == 0 {
+	if publicView {
 		w.Header().Set("Cache-Control", "public,max-age=3600")
 		w.Header().Set("Vary", "Cookie")
 	}
@@ -55,6 +64,15 @@ func (h backend) dashboard(w http.ResponseWriter, r *http.Request) error {
 		rng = timeRange(r.Context(), view.Period, user.Settings.Timezone.Loc(), bool(user.Settings.SundayStartsWeek))
 		if err != nil {
 			return err
+		}
+
+		// Apply the same "a week before the first pageview at the most" limit
+		// that getPeriod() applies to explicit dates, so the first render of a
+		// saved view doesn't show a longer range (with different "view by"
+		// options) than submitting the dashboard form it renders.
+		if c := site.FirstHitAt.Add(-24 * time.Hour * 7); rng.Start.Before(c) {
+			y, m, d := c.In(user.Settings.Timezone.Loc()).Date()
+			rng.Start = time.Date(y, m, d, 0, 0, 0, 0, user.Settings.Timezone.Loc()).UTC()
 		}
 	} else {
 		view.Period = strings.TrimSuffix(q.Get("hl-period"), "-cur")
@@ -134,8 +152,12 @@ func (h backend) dashboard(w http.ResponseWriter, r *http.Request) error {
 		l := log.Module("dashboard")
 		_, err := w.GetData(ctx, args)
 		if err != nil {
-			l.Error(ctx, err, log.AttrHTTP(r))
-			_, err = zhttp.UserError(err)
+			if pq.As(err, pqerror.QueryCanceled) != nil {
+				err = guru.New(http.StatusGatewayTimeout, "server timed out loading data")
+			} else {
+				l.Error(ctx, err, log.AttrHTTP(r))
+				_, err = zhttp.UserError(err)
+			}
 			w.SetErr(err)
 		}
 		l.Debug(r.Context(), w.Name(), "took", time.Since(start))
@@ -211,7 +233,9 @@ func (h backend) dashboard(w http.ResponseWriter, r *http.Request) error {
 				})
 			}(w)
 		}
+
 		run.Wait()
+		loader.unregister(connectID)
 	}()
 
 	rng = rng.In(user.Settings.Timezone.Loc()).Locale(ztime.RangeLocale{
@@ -368,9 +392,11 @@ func timeRange(ctx context.Context, r string, tz *time.Location, sundayStartsWee
 	case "year":
 		rng = rng.Last(ztime.Year)
 	default:
-		// Sometimes the frontend sends something like "54.958333333333336"
-		// presumably due to to JS numbers always being a float. Not entirely
-		// sure where this happens, so just deal with it here.
+		// This can be a fraction such as "54.958333333333336" for views that
+		// were saved from dashboard.js before it rounded the number: it
+		// divided the difference of two dates at local midnight by 24 hours,
+		// and with a DST transition in the range that's not a whole number.
+		// Keep rounding here for views that were saved like that.
 		days, err := strconv.ParseFloat(r, 32)
 		if err != nil {
 			log.Error(ctx, errors.Errorf("timeRange: %w", err), "rng", r)
@@ -416,6 +442,7 @@ func getPeriod(w http.ResponseWriter, r *http.Request, site *goatcounter.Site, u
 func getGroup(r *http.Request, g goatcounter.Group, rng ztime.Range) (goatcounter.Group, goatcounter.Groups) {
 	var (
 		allow goatcounter.Groups
+		saved = g
 		d     = rng.End.Sub(rng.Start).Hours() / 24
 	)
 	// Viewing by hour for a year or viewing by day for 2 days looks horrible,
@@ -431,8 +458,14 @@ func getGroup(r *http.Request, g goatcounter.Group, rng ztime.Range) (goatcounte
 		g, allow = goatcounter.GroupDaily, append(allow, goatcounter.GroupDaily, goatcounter.GroupWeekly, goatcounter.GroupMonthly)
 	case d < 90:
 		g, allow = goatcounter.GroupHourly, append(allow, goatcounter.GroupHourly, goatcounter.GroupDaily)
-	case d > 90:
+	case d >= 90:
 		g, allow = goatcounter.GroupDaily, append(allow, goatcounter.GroupDaily, goatcounter.GroupWeekly)
+	}
+
+	// Keep the grouping from the saved view if it makes sense for this period,
+	// instead of always resetting it to the default.
+	if slices.Contains(allow, saved) {
+		g = saved
 	}
 
 	switch gg := strings.ToLower(r.URL.Query().Get("group")); {

@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"crypto/subtle"
 	"encoding/base64"
 	"fmt"
 	"net/http"
@@ -16,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/sethvargo/go-limiter"
+	"golang.org/x/text/language"
 	"zgo.at/errors"
 	"zgo.at/goatcounter/v2"
 	"zgo.at/goatcounter/v2/cron"
@@ -72,14 +72,14 @@ func (h api) mount(r chi.Router, db zdb.DB, ratelimits Ratelimits) {
 	a := r.With(
 		addCORS(),
 		middleware.AllowContentType("application/json"),
-		Ratelimit(false, func(r *http.Request) (limiter.Store, string) {
+		Ratelimit(false, func(r *http.Request) ([]limiter.Store, string) {
 			switch r.URL.Path {
 			default:
-				return ratelimits.API, ""
+				return []limiter.Store{ratelimits.API2, ratelimits.API}, ""
 			case "/api/v0/export":
-				return ratelimits.Export, ""
+				return []limiter.Store{ratelimits.Export}, ""
 			case "/api/v0/count":
-				return ratelimits.APICount, ""
+				return []limiter.Store{ratelimits.APICount}, ""
 			}
 		}),
 	)
@@ -163,36 +163,11 @@ func tokenFromHeader(r *http.Request, w http.ResponseWriter) (string, error) {
 	}
 }
 
-var (
-	bufferKeyOnce sync.Once
-	bufferKey     []byte
-)
-
-// ResetBufferKey resets the buffer key, for tests.
-func ResetBufferKey() {
-	bufferKeyOnce = sync.Once{}
-	bufferKey = []byte{}
-}
-
 func (h api) auth(r *http.Request, w http.ResponseWriter, require zint.Bitflag64) error {
 	key, err := tokenFromHeader(r, w)
 	if err != nil {
 		w.Header().Set("WWW-Authenticate", "Basic realm=GoatCounter")
 		return err
-	}
-
-	// From "goatcounter buffer".
-	if r.Header.Get("X-Goatcounter-Buffer") == "1" && r.URL.Path == "/api/v0/count" {
-		bufferKeyOnce.Do(func() {
-			bufferKey, err = goatcounter.LoadBufferKey(r.Context())
-			if err != nil {
-				log.Error(r.Context(), err)
-			}
-		})
-		if subtle.ConstantTimeCompare(bufferKey, []byte(key)) == 0 {
-			return guru.New(http.StatusUnauthorized, "unknown buffer token")
-		}
-		return nil
 	}
 
 	// Regular API token.
@@ -239,8 +214,14 @@ func (h api) auth(r *http.Request, w http.ResponseWriter, require zint.Bitflag64
 }
 
 type apiExportRequest struct {
-	// Pagination cursor; only export hits with an ID greater than this.
+	// Export format, defaults to csv. {enum: csv json}
+	Format string `json:"format"`
+
+	// Pagination cursor for CSV; only export hits with an ID greater than this.
 	StartFromHitID goatcounter.HitID `json:"start_from_hit_id"`
+
+	// The day to start this export from, for JSON exports.
+	StartFromDay time.Time `db:"start_from_day" json:"start_from_day,omitzero"`
 }
 
 // For testing various generic properties about the API.
@@ -341,13 +322,30 @@ func (h api) export(w http.ResponseWriter, r *http.Request) error {
 	}
 
 	var export goatcounter.Export
-	fp, err := export.CreateCSV(r.Context(), req.StartFromHitID)
-	if err != nil {
-		return err
+	switch req.Format {
+	default:
+		return guru.Errorf(400, "unknown format: %q", req.Format)
+	case "csv":
+		if !req.StartFromDay.IsZero() {
+			return guru.New(400, "start_from_day is only valid for JSON exports")
+		}
+		fp, err := export.CreateCSV(r.Context(), req.StartFromHitID)
+		if err != nil {
+			return err
+		}
+		ctx := context.WithoutCancel(r.Context())
+		bgrun.MustRunFunction(fmt.Sprintf("export api:%d", export.SiteID), func() { export.RunCSV(ctx, fp, false) })
+	case "json":
+		if req.StartFromHitID != 0 {
+			return guru.New(400, "start_from_hit_id is only valid for CSV exports")
+		}
+		fp, err := export.CreateJSON(r.Context(), req.StartFromDay)
+		if err != nil {
+			return err
+		}
+		ctx := context.WithoutCancel(r.Context())
+		bgrun.MustRunFunction(fmt.Sprintf("export api:%d", export.SiteID), func() { export.RunJSON(ctx, fp, false) })
 	}
-
-	ctx := context.WithoutCancel(r.Context())
-	bgrun.MustRunFunction(fmt.Sprintf("export api:%d", export.SiteID), func() { export.RunCSV(ctx, fp, false) })
 
 	w.WriteHeader(http.StatusAccepted)
 	return zhttp.JSON(w, export)
@@ -498,6 +496,9 @@ type APICountRequestHit struct {
 	// Location as ISO-3166-1 alpha2 string (e.g. NL, ID, etc.)
 	Location string `json:"location"`
 
+	// Language as a BCP 47 value (e.g. en, en-US, nl, etc.)
+	Language string `json:"language"`
+
 	// IP to get location from; not used if location is set. Also used for
 	// session generation.
 	IP string `json:"ip"`
@@ -526,8 +527,8 @@ type APICountRequestHit struct {
 
 func (h APICountRequestHit) String() string {
 	return fmt.Sprintf(
-		`{Path: %q, Title: %q, Event: %t, Ref: %q, Size: "%s", Query: %q, Bot: %d, UserAgent: %q, Location: %q, IP: %q, CreatedAt: %q, Session: %q, Host: %q}`,
-		h.Path, h.Title, h.Event, h.Ref, h.Size, h.Query, h.Bot, h.UserAgent, h.Location, h.IP, h.CreatedAt, h.Session, h.Host)
+		`{Path: %q, Title: %q, Event: %t, Ref: %q, Size: "%s", Query: %q, Bot: %d, UserAgent: %q, Location: %q, Language: %q, IP: %q, CreatedAt: %q, Session: %q, Host: %q}`,
+		h.Path, h.Title, h.Event, h.Ref, h.Size, h.Query, h.Bot, h.UserAgent, h.Location, h.Language, h.IP, h.CreatedAt, h.Session, h.Host)
 }
 
 // POST /api/v0/count count
@@ -590,6 +591,19 @@ func (h api) count(w http.ResponseWriter, r *http.Request) error {
 			a.Location = (goatcounter.Location{}).LookupIP(r.Context(), a.IP)
 		}
 
+		var lang *string
+		if a.Language != "" && site.Settings.Collect.Has(goatcounter.CollectLanguage) {
+			tag, err := language.Parse(a.Language)
+			// Just silently ignore invalid languages; it's user-provided and
+			// can be set to silly things.
+			if err == nil {
+				base, c := tag.Base()
+				if c == language.Exact || c == language.High {
+					lang = new(base.ISO3())
+				}
+			}
+		}
+
 		hit := goatcounter.Hit{
 			Path:            a.Path,
 			Title:           a.Title,
@@ -601,6 +615,7 @@ func (h api) count(w http.ResponseWriter, r *http.Request) error {
 			CreatedAt:       a.CreatedAt.UTC(),
 			UserAgentHeader: a.UserAgent,
 			Location:        a.Location,
+			Language:        lang,
 			RemoteAddr:      a.IP,
 		}
 
@@ -1200,7 +1215,7 @@ func (h api) stats(w http.ResponseWriter, r *http.Request) error {
 		f = stats.ListLanguages
 	case "sizes":
 		f = func(ctx context.Context, rng ztime.Range, pathFilter goatcounter.PathFilter, _, _ int) error {
-			return stats.ListSizes(ctx, rng, pathFilter)
+			return stats.ListSizes(ctx, rng, pathFilter, false)
 		}
 	case "campaigns":
 		f = stats.ListCampaigns

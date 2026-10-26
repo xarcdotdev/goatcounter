@@ -86,9 +86,8 @@ func (h backend) count(w http.ResponseWriter, r *http.Request) error {
 		return zhttp.Bytes(w, gif)
 	}
 	if len(hit.Path) > 2048 {
-		w.Header().Add("X-Goatcounter", fmt.Sprintf("ignored because path is longer than 2048 bytes (%d bytes)",
-			len(r.RequestURI)))
-		w.WriteHeader(http.StatusRequestURITooLong)
+		w.Header().Add("X-Goatcounter", fmt.Sprintf("ignored because path is longer than 2048 bytes (%d bytes)", len(r.RequestURI)))
+		w.WriteHeader(400)
 		return zhttp.Bytes(w, gif)
 	}
 

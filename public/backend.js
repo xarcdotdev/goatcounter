@@ -16,7 +16,7 @@
 			USER_SETTINGS.language = 'en'
 
 		;[report_errors, bind_tooltip, bind_confirm, translate_calendar, onetime].forEach((f) => f.call())
-		;[page_dashboard, page_settings_main, page_user_pref, page_user_api, page_user_dashboard, page_bosmang]
+		;[page_dashboard, page_settings_main, page_settings_batchpurge, page_user_pref, page_user_api, page_user_dashboard, page_bosmang]
 			.forEach((f) => document.body.id.match(new RegExp('^' + f.name.replace(/_/g, '-'))) && f.call())
 	})
 
@@ -177,6 +177,14 @@
 		}).trigger('change')
 	}
 
+	let page_settings_batchpurge = () => {
+		$('#edit-button').on('click', (e) => {
+			e.preventDefault()
+			$('#batchpurge-input').removeClass('hide')
+			$('#batchpurge-preview').remove()
+		})
+	}
+
 	var page_user_pref = function() {
 		// Set the timezone based on the browser's timezone.
 		$('#set-local-tz').on('click', function(e) {
@@ -302,17 +310,6 @@
 			tbody.html('').html(rows)
 			th.closest('table').find('th').attr('data-sort', '0')
 			th.attr('data-sort', is_sort ? '0' : '1')
-		})
-
-		$('.show-cache').on('click', function(e) {
-			e.preventDefault()
-
-			let btn = $(this),
-				tbl = btn.closest('li').find('table'),
-				vis = tbl.css('display') !== 'none'
-
-			btn.text(vis ? 'show' : 'hide')
-			tbl.css('display', vis ? 'none' : 'table')
 		})
 	}
 })();

@@ -31,16 +31,37 @@ func mustNewMem(tokens uint64, interval time.Duration) limiter.Store {
 }
 
 type Ratelimits struct {
-	Count, API, APICount, Export, Login limiter.Store
+	Count, API, API2, APICount, Export, Login limiter.Store
 }
 
 func NewRatelimits() Ratelimits {
 	return Ratelimits{
 		Count:    mustNewMem(4, time.Second),
 		API:      mustNewMem(4, time.Second),
+		API2:     mustNewMem(500, 3600*time.Second),
 		APICount: mustNewMem(60, 120*time.Second),
 		Export:   mustNewMem(1, 3600*time.Second),
 		Login:    mustNewMem(20, 60*time.Second),
+	}
+}
+
+// Clear a ratelimit.
+func (r *Ratelimits) Clear(name string) {
+	switch strings.ToLower(name) {
+	case "count":
+		r.Count = nil
+	case "api":
+		r.API = nil
+	case "api2":
+		r.API2 = nil
+	case "apicount", "api-count":
+		r.APICount = nil
+	case "export":
+		r.Export = nil
+	case "login":
+		r.Login = nil
+	default:
+		panic(fmt.Sprintf("handlers.SetRateLimit: invalid name: %q", name))
 	}
 }
 
@@ -52,6 +73,8 @@ func (r *Ratelimits) Set(name string, tokens int, secs int64) {
 		r.Count = l
 	case "api":
 		r.API = l
+	case "api2":
+		r.API2 = l
 	case "apicount", "api-count":
 		r.APICount = l
 	case "export":
@@ -151,8 +174,11 @@ func NewStatic(r chi.Router, dev, goatcounterCom bool, basePath string) chi.Rout
 	var cache map[string]int
 	if !dev {
 		cache = map[string]int{
-			"/count.js": 86400,
-			"*":         86400 * 30,
+			"/count.js": 86400 * 7,
+			"*":         86400 * 90,
+		}
+		for i := range 20 {
+			cache[fmt.Sprintf("/count.v%d.js", i+1)] = 86400 * 365
 		}
 	}
 	fsys, err := zfs.EmbedOrDir(goatcounter.Static, "public", dev)
@@ -164,6 +190,11 @@ func NewStatic(r chi.Router, dev, goatcounterCom bool, basePath string) chi.Rout
 	s.Header("/count.js", map[string]string{
 		"Cross-Origin-Resource-Policy": "cross-origin",
 	})
+	for i := range 20 {
+		s.Header(fmt.Sprintf("/count.v%d.js", i+1), map[string]string{
+			"Cross-Origin-Resource-Policy": "cross-origin",
+		})
+	}
 	r.Get("/*", func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Path = strings.TrimPrefix(r.URL.Path, basePath)
 		s.ServeHTTP(w, r)

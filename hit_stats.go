@@ -1,8 +1,12 @@
 package goatcounter
 
 import (
+	"cmp"
+
 	"context"
 	"fmt"
+	"slices"
+
 	"strings"
 	"time"
 
@@ -37,7 +41,7 @@ func (t tbl) OnConflict(ctx context.Context) string {
 func (t tbl) Bulk(ctx context.Context) (zdb.BulkInsert, error) {
 	ins, err := zdb.NewBulkInsert(ctx, t.Table, t.Columns)
 	if err != nil {
-		return zdb.BulkInsert{}, err
+		return zdb.BulkInsert{}, fmt.Errorf("%q: %w", t.Table, err)
 	}
 	ins.OnConflict(t.OnConflict(ctx))
 	return ins, nil
@@ -271,7 +275,7 @@ const (
 )
 
 // ListSizes lists all device sizes.
-func (h *HitStats) ListSizes(ctx context.Context, rng ztime.Range, pathFilter PathFilter) error {
+func (h *HitStats) ListSizes(ctx context.Context, rng ztime.Range, pathFilter PathFilter, sortByCount bool) error {
 	var (
 		user                    = MustGetUser(ctx)
 		filterSQL, filterParams = pathFilter.SQL(ctx)
@@ -308,6 +312,9 @@ func (h *HitStats) ListSizes(ctx context.Context, rng ztime.Range, pathFilter Pa
 		default:
 			ns[3].Count += h.Stats[i].Count
 		}
+	}
+	if sortByCount {
+		slices.SortFunc(ns, func(a, b HitStat) int { return cmp.Compare(b.Count, a.Count) })
 	}
 	h.Stats = ns
 

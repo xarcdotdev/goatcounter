@@ -45,7 +45,8 @@
 			}, 1000)
 		}
 
-		window.WEBSOCKET.onmessage = function(e) {
+		window.WEBSOCKET.onclose = () => { window.WEBSOCKET = null }
+		window.WEBSOCKET.onmessage = (e) => {
 			let msg = JSON.parse(e.data),
 				wid = $(`#dash-widgets div[data-widget=${msg.id}]`)
 			wid.html(msg.html)
@@ -164,12 +165,6 @@
 
 	// Set the start and end period and submit the form.
 	var set_period = function(start, end) {
-		if (TZ_OFFSET) {
-			var offset = (start.getTimezoneOffset() + TZ_OFFSET) / 60
-			start.setHours(start.getHours() + offset)
-			end.setHours(end.getHours() + offset)
-		}
-
 		$('#period-start').val(format_date_ymd(start))
 		$('#period-end').val(format_date_ymd(end))
 		$('#dash-form').trigger('submit')
@@ -225,6 +220,16 @@
 			e.preventDefault()
 
 			var start = new Date(), end = new Date()
+			// Adjust the browser's "now" to the timezone from the user
+			// settings, which is what the dashboard displays; near midnight
+			// the two can be on different dates. The back/forward buttons
+			// below need no adjustment, as they operate on the displayed
+			// dates, which are already in that timezone.
+			if (TZ_OFFSET) {
+				var offset = (start.getTimezoneOffset() + TZ_OFFSET) / 60
+				start.setHours(start.getHours() + offset)
+				end.setHours(end.getHours() + offset)
+			}
 			switch (this.value) {
 				case 'day':       /* Do nothing */ break
 				case 'week':      start.setDate(start.getDate() - 7);   break;
@@ -411,7 +416,9 @@
 			e.preventDefault()
 			var p = $('#dash-select-period').attr('class').substr(7)
 			if (p === '')
-				p = (get_date($('#period-end').val()) - get_date($('#period-start').val())) / 86400000
+				// Round because the dates are at local midnight, and with a DST
+				// transition in the range a "day" isn't always 24 hours.
+				p = Math.round((get_date($('#period-end').val()) - get_date($('#period-start').val())) / 86400000)
 
 			var done = paginate_button($(this), () => {
 				jQuery.ajax({

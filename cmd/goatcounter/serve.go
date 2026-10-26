@@ -152,8 +152,8 @@ Flags:
 
                For example:
 
-                   -geodb 123456:abcdef
-                   -geodb 123456:abcdef:/home/goatcounter/cities.mmdb
+                   -geodb maxmind:123456:abcdef
+                   -geodb maxmind:123456:abcdef:/home/goatcounter/cities.mmdb
 
                Updates are only done on restarts.
 
@@ -162,14 +162,16 @@ Flags:
                a comma. The defaults are:
 
                    count:4/1            4 requests / second
-                   api:4/1              4 requests / seconds
+                   api:4/1              4 requests / second
+                   api2:500/3600      500 requests / hour
                    api-count:60/120    60 requests / 2 minutes
                    export:1/3600        1 requests / hour
                    login:20/60         20 requests / minute
 
                If one of the names is omitted it will fall back to the default
                value; for example "-ratelimit export:3/3600,api:100/1" will use
-               the default for "count", "login", etc.
+               the default for "count", "login", etc. Use "none" to disable this
+               ratelimit.
 
   -api-max     Maximum number of items /api/ endpoints will return. Set to 0
                for the defaults (200 for paths, 100 for everything else), or <0
@@ -288,7 +290,7 @@ func cmdServe(f zli.Flags, ready chan<- struct{}, stop chan struct{}, saas bool)
 
 	timeout := 60
 	if saas {
-		timeout = 15
+		timeout = 30
 	}
 
 	// Set up HTTP handler and servers.
@@ -299,13 +301,10 @@ func cmdServe(f zli.Flags, ready chan<- struct{}, stop chan struct{}, saas bool)
 		d := znet.RemovePort(domain.String())
 		hosts[d] = zhttp.RedirectHost("https://www." + domain.String())
 		hosts["www."+d] = handlers.NewWebsite(db, dev.Bool())
-		if dev.Bool() {
-			hosts[znet.RemovePort(domainStatic.String())] = handlers.NewStatic(chi.NewRouter(), dev.Bool(), true, c.BasePath)
-		}
+		hosts["static."+d] = handlers.NewStatic(chi.NewRouter(), dev.Bool(), true, c.BasePath)
 	}
 	if domainStatic.String() != "" {
-		// May not be needed, but just in case the DomainStatic isn't an
-		// external CDN.
+		// May not be needed, but just in case the DomainStatic isn't an external CDN.
 		hosts[znet.RemovePort(domainStatic.String())] = handlers.NewStatic(chi.NewRouter(), dev.Bool(), false, c.BasePath)
 	}
 
@@ -525,21 +524,28 @@ func setupRatelimits(v *zvalidate.Validator, ratelimit string) handlers.Ratelimi
 	h := handlers.NewRatelimits()
 	if ratelimit != "" {
 		for r := range strings.SplitSeq(ratelimit, ",") {
-			name, spec, _ := strings.Cut(r, ":")
-			reqs, secs, _ := strings.Cut(spec, "/")
-
 			v2 := zvalidate.New()
+
+			name, spec, _ := strings.Cut(r, ":")
 			v2.Required("-ratelimit.name", name)
-			v2.Required("-ratelimit.requests", reqs)
-			v2.Required("-ratelimit.seconds", secs)
-			nn := v2.Include("-ratelimit.name", name, []string{"count", "api", "api-count", "export", "login"})
+			nn := v2.Include("-ratelimit.name", name, []string{"count", "api", "api2", "api-count", "export", "login"})
 			name = nn.(string)
-			r := v2.Integer("-ratelimit.requests", reqs)
-			s := v2.Integer("-ratelimit.seconds", secs)
+
+			if strings.TrimSpace(spec) == "none" {
+				h.Clear(name)
+				continue
+			} else {
+				reqs, secs, _ := strings.Cut(spec, "/")
+
+				v2.Required("-ratelimit.requests", reqs)
+				v2.Required("-ratelimit.seconds", secs)
+				r := v2.Integer("-ratelimit.requests", reqs)
+				s := v2.Integer("-ratelimit.seconds", secs)
+				h.Set(name, int(r), s)
+			}
 			if v2.HasErrors() {
 				v.Merge(v2)
 			}
-			h.Set(name, int(r), s)
 		}
 	}
 	return h

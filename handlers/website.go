@@ -27,6 +27,7 @@ import (
 	"zgo.at/zhttp/auth"
 	"zgo.at/zhttp/mware"
 	"zgo.at/zstd/zfs"
+	"zgo.at/zstd/zstring"
 	"zgo.at/zvalidate"
 )
 
@@ -389,7 +390,12 @@ func (h website) doSignup(w http.ResponseWriter, r *http.Request) error {
 		err := blackmail.Get(ctx).Send("Welcome to GoatCounter!",
 			blackmail.From("GoatCounter", goatcounter.Config(r.Context()).EmailFrom),
 			blackmail.To(user.Email),
-			blackmail.BodyMustText(goatcounter.TplEmailWelcome{ctx, site, user, goatcounter.Config(ctx).DomainCount}.Render),
+			blackmail.BodyMustText(goatcounter.TplEmailWelcome{
+				Context:     ctx,
+				Site:        site,
+				User:        user,
+				CountDomain: goatcounter.Config(ctx).DomainCount,
+			}.Render),
 		)
 		if err != nil {
 			log.Errorf(ctx, "welcome email: %s", err)
@@ -465,7 +471,7 @@ func (h website) doForgot(w http.ResponseWriter, r *http.Request) error {
 		err := blackmail.Get(ctx).Send("Your GoatCounter sites",
 			mail.Address{Name: "GoatCounter", Address: goatcounter.Config(ctx).EmailFrom},
 			blackmail.To(args.Email),
-			blackmail.BodyMustText(goatcounter.TplEmailForgotSite{ctx, sites, args.Email}.Render))
+			blackmail.BodyMustText(goatcounter.TplEmailForgotSite{Context: ctx, Sites: sites, Email: args.Email}.Render))
 		if err != nil {
 			log.Error(ctx, err)
 		}
@@ -486,7 +492,7 @@ func (h website) help(w http.ResponseWriter, r *http.Request) error {
 		dc = Site(r.Context()).SchemelessURL(r.Context())
 	}
 
-	cp := strings.TrimLeft(chi.URLParam(r, "*"), "/")
+	cp := strings.TrimLeft(zstring.Squeeze(chi.URLParam(r, "*"), '/'), "/")
 	if cp == "" {
 		return zhttp.MovedPermanently(w, "/help/start")
 	}

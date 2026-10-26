@@ -88,14 +88,14 @@ func TestCSVExport(t *testing.T) {
 		want := strings.ReplaceAll(`{
 			"id": 1,
 			"site_id": 2,
-			"start_from_hit_id": 0,
+			"format": "csv",
 			"last_hit_id": 4,
 			"path": "%(ANY)goatcounter-export-gctest2-%(YEAR)%(MONTH)%(DAY)T%(ANY)Z-0.csv.gz",
 			"created_at": "%(YEAR)-%(MONTH)-%(DAY)T%(ANY)Z",
 			"finished_at": "%(YEAR)-%(MONTH)-%(DAY)T%(ANY)Z",
 			"num_rows": 4,
 			"size": "0.1",
-			"hash": "sha256-8a426c2bebfa343e2dc20e154b67297e981ac3399202369485d6ede82979205b",
+			"hash": "sha256-d394de63fa77336cd1ef7f2190c4d7aa1f82b94cabe234b343b08b27b56e4486",
 			"error": null
 		}`, "\t", "")
 		got := string(zjson.MustMarshalIndent(export, "", ""))
